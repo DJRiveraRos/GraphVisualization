@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Database Visualization</title>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block">
+	<style>
+		:root {
+			--border-color: #ccc;
+			--panel-bg: #f0f0f0;
+			--main-bg: #fff;
+			--resizer-bg: #ddd;
+			--resizer-hover-bg: #bbb;
+		}
+
+		body, html {
+			margin: 0;
+			padding: 0;
+			height: 100%;
+			font-family: sans-serif;
+			overflow: hidden;
+		}
+
+		#app-container {
+			display: flex;
+			flex-direction: column;
+			height: 100vh;
+			padding: 10px;
+			box-sizing: border-box;
+		}
+
+		.top-section {
+			display: flex;
+	    	flex-grow: 1;
+			position: relative;
+		}
+
+		#main-panel {
+			flex-grow: 1;
+			background-color: var(--main-bg);
+			padding: 20px;
+			position: relative;
+			border: 1px solid navy;
+		}
+
+		#network {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			border: 1px solid #ddd;
+			box-sizing: border-box;
+		}
+
+		.panel-content {
+			padding: 15px;
+		}
+
+		.right-panel {
+			width: 300px;
+			background-color: var(--panel-bg);
+			border-left: 1px solid var(--border-color);
+			position: relative;
+			transition: width 0.3s ease;
+			flex-shrink: 0;
+			overflow-y: auto;
+		}
+
+		.resizer {
+			background-color: var(--resizer-bg);
+			transition: background-color 0.3s ease;
+			position: relative;
+			z-index: 5;
+		}
+
+		.resizer:hover {
+			background-color: var(--resizer-hover-bg);
+		}
+
+		.right-resizer {
+			width: 5px;
+			cursor: col-resize;
+		}
+
+		.bottom-panel {
+			height: 30vh;
+			background-color: var(--panel-bg);
+			border-top: 1px solid var(--border-color);
+			position: relative;
+			transition: height 0.3s ease;
+			flex-shrink: 0;
+		}
+
+		.bottom-resizer {
+			height: 5px;
+			width: 100%;
+			cursor: row-resize;
+		}
+
+        #lists-panel {
+            height: 30vh;
+            background: #f8f8f8;
+            border-top: 1px solid navy;
+            padding: 10px;
+            overflow-y: auto;
+            transition: transform 0.3s;
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            box-sizing: border-box;
+        }
+				
+        .lists-panel-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+		
+        .lists-panel-header h3 {
+            margin: 0;
+			margin-top: 10px;
+            margin-left: 30px;
+        }
+		
+        .lists-container {
+            display: flex;
+            gap: 10px;
+            height: calc(100% - 50px);
+            overflow-x: auto;
+        }
+		
+        .list-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .list-section:nth-child(1), .list-section:nth-child(2) {
+            flex: 1;
+        }
+
+        .list-section:nth-child(3) {
+            flex: 0 0 auto;
+        }
+		
+        .list-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding: 5px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            text-align: center;
+        }
+		
+        .list-table {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            display: flex;
+            flex-direction: column;
+        }
+		
+        .list-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            flex: 1;
+        }
+		
+        .list-table th {
+            background: #f0f0f0;
+            padding: 8px 4px;
+            border-bottom: 1px solid #ccc;
+            cursor: pointer;
+            user-select: none;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+		
+        .list-table th:hover {
+            background: #e0e0e0;
+        }
+		
+        .list-table td {
+            padding: 6px 4px;
+            border-bottom: 1px solid #eee;
+            word-wrap: break-word;
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+		
+        .list-table tr:hover {
+            background: #f5f5f5;
+            cursor: pointer;
+        }
+		
+        .list-table tr.selected {
+            background: #d4edda;
+        }
+		
+        .sort-indicator {
+            margin-left: 5px;
+            font-size: 10px;
+        }
+
+        /* Pagination Controls */
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background: #f8f8f8;
+            border-top: 1px solid #ccc;
+            font-size: 12px;
+        }
+
+        .pagination-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .pagination-buttons button {
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            background: white;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        .pagination-buttons button:hover:not(:disabled) {
+            background: #e0e0e0;
+        }
+
+        .pagination-buttons button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .items-per-page select {
+            padding: 2px 4px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+		
+		.toggle-btn {
+			position: absolute;
+			z-index: 10;
+			padding: 5px 10px;
+			background: transparent;
+			border: none;
+			cursor: pointer;
+		}
+
+		#right-toggle {
+			top: 20px;
+			left: 10px;
+		}
+
+		#app-container > #right-toggle {
+			left: auto;
+			right: 20px;
+		}
+
+		#bottom-toggle {
+			top: 10px;
+		}
+
+		#app-container > #bottom-toggle {
+			top: auto;
+			bottom: 10px;
+		}
+
+		.right-panel h3 {
+			margin-top: 30px;
+			margin-bottom: 10px;
+		}
+
+		.right-panel p {
+			margin-top: 10px;
+			margin-bottom: 0;
+			font-size: 0.9em;
+			color: #555;
+		}
+
+		.file-input-container {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			margin-bottom: 10px;
+		}
+
+		#loading-spinner {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(0, 0, 0, 0.5);
+			display: none;
+			justify-content: center;
+			align-items: center;
+			z-index: 1000;
+		}
+		.spinner {
+			border: 8px solid #f3f3f3;
+			border-top: 8px solid #007bff;
+			border-radius: 50%;
+			width: 50px;
+			height: 50px;
+			animation: spin 1s linear infinite;
+		}
+		@keyframes spin {
+			0% { transform: rotate(0deg); }
+			100% { transform: rotate(360deg); }
+		}
+
+		.hidden {
+			display: none !important;
+		}
+
+		#search-box {
+			width: calc(100% - 30px);
+			padding: 8px;
+			margin-bottom: 15px;
+			border: 1px solid var(--border-color);
+			border-radius: 4px;
+		}
+
+		#infoText {
+			background-color: #e9e9e9;
+			border: 1px solid #ddd;
+			padding: 10px;
+			min-height: 100px;
+			overflow: auto;
+			white-space: pre-wrap;
+			word-break: break-word;
+			overflow-y: auto;
+		}
+
+		.list-container {
+			display: flex;
+			justify-content: space-around;
+			padding: 10px;
+			height: calc(100% - 20px);
+			overflow-y: auto;
+		}
+
+		.company-list, .officer-list, .statistics-list {
+			flex: 1;
+			margin: 0 10px;
+			border: 1px solid var(--border-color);
+			padding: 10px;
+			background-color: var(--panel-bg);
+			display: flex;
+			flex-direction: column;
+		}
+
+		.list-container h4 {
+			margin-top: 0;
+			margin-bottom: 10px;
+			text-align: center;
+		}
+
+		.column-headers {
+			display: flex;
+			font-weight: bold;
+			border-bottom: 1px solid var(--border-color);
+			padding-bottom: 5px;
+			margin-bottom: 5px;
+		}
+
+		.column-headers span {
+			flex: 1;
+			text-align: center;
+		}
+		.company-list .column-headers span:nth-child(1) { flex: 0.5; }
+		.company-list .column-headers span:nth-child(2) { flex: 0.7; }
+		.company-list .column-headers span:nth-child(3) { flex: 0.7; }
+		.company-list .column-headers span:nth-child(4) { flex: 0.6; }
+		.company-list .column-headers span:nth-child(5) { flex: 1.5; }
+		.company-list .column-headers span:nth-child(6) { flex: 1; }
+		.company-list .column-headers span:nth-child(7) { flex: 1; }
+
+		.officer-list .column-headers span:nth-child(1) { flex: 0.5; }
+		.officer-list .column-headers span:nth-child(2) { flex: 1.5; }
+		.officer-list .column-headers span:nth-child(3) { flex: 0.7; }
+		.officer-list .column-headers span:nth-child(4) { flex: 0.7; }
+		.officer-list .column-headers span:nth-child(5) { flex: 0.7; }
+		.officer-list .column-headers span:nth-child(6) { flex: 0.7; }
+		.officer-list .column-headers span:nth-child(7) { flex: 0.8; }
+		.officer-list .column-headers span:nth-child(8) { flex: 1; }
+		.officer-list .column-headers span:nth-child(9) { flex: 1; }
+
+		.list-container ul {
+			list-style: none;
+			padding: 0;
+			margin: 0;
+			overflow-y: auto;
+		}
+
+		.list-container ul li {
+			padding: 5px 0;
+			border-bottom: 1px dotted #eee;
+			display: flex;
+		}
+
+		.statistics-list ul li {
+			display: block;
+		}
+
+		.control-buttons {
+			position: absolute;
+			bottom: 10px;
+			right: 10px;
+			display: flex;
+			flex-direction: column;
+			gap: 5px;
+			z-index: 10;
+		}
+
+		.control-buttons button {
+			background-color: var(--panel-bg);
+			border: 1px solid var(--border-color);
+			border-radius: 5px;
+			padding: 8px;
+			cursor: pointer;
+			font-size: 14px;
+			width: 40px;
+			height: 40px;
+			color: #333;
+			text-align: center;
+			transition: background-color 0.2s, color 0.2s;
+		}
+
+		.control-buttons button:hover {
+			background-color: var(--resizer-hover-bg);
+			color: #000;
+		}
+
+		.material-symbols-outlined {
+		  font-variation-settings:
+		  'FILL' 0,
+		  'wght' 400,
+		  'GRAD' 0,
+		  'opsz' 24
+		}
+
+		@media (max-width: 768px) {
+			#app-container {
+				padding: 5px;
+			}
+			
+			.right-panel {
+				width: 70 vw;
+			}
+			
+			.bottom-panel {
+				height: 30vh;
+			}
+			
+			.lists-container {
+				flex-direction: column;
+				gap: 5px;
+			}
+			
+			.list-table table {
+				font-size: 10px;
+			}
+
+			.pagination-controls {
+				flex-direction: column;
+				gap: 5px;
+			}
+		}
+
+		/* Context Menu Styles */
+		#context-menu {
+			position: fixed;
+			display: none;
+			background: white;
+			border: 1px solid #ccc;
+			box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+			z-index: 10000;
+			min-width: 150px;
+			border-radius: 4px;
+			padding: 5px 0;
+		}
+
+		.context-menu-item {
+			padding: 8px 15px;
+			cursor: pointer;
+			font-size: 13px;
+			color: #333;
+		}
+
+		.context-menu-item:hover {
+			background-color: #f0f0f0;
+			color: #007bff;
+		}
+	</style>
+</head>
+<body>
+    <div id="app-container">
+		<div id="context-menu">
+			<div class="context-menu-item" id="menu-highlight-recursive">Highlight Related Nodes</div>
+			<div class="context-menu-item hidden" id="menu-hide-highlighted">Hide Highlighted Nodes</div>
+			<div class="context-menu-item hidden" id="menu-hide-unhighlighted">Hide Unhighlighted Nodes</div>
+			<div class="context-menu-item" id="menu-clear-highlight">Clear All Highlights</div>
+		</div>
+		<div id="loading-spinner">
+			<div class="spinner"></div>
+		</div>
+        <div class="top-section">
+			<div id="main-panel">
+				<div id="network"></div>
+				<div class="control-buttons">
+					<button id="zoom-in-btn" class="hidden material-symbols-outlined">zoom_in</button>
+					<button id="zoom-out-btn" class="hidden material-symbols-outlined">zoom_out</button>
+					<button id="center-btn" class="hidden material-symbols-outlined">center_focus_strong</button>
+					<button id="download-btn" class="hidden material-symbols-outlined">download</button>
+				</div>
+			</div>
+			<div id="right-resizer" class="resizer right-resizer"></div>
+			<div id="right-panel" class="panel right-panel">
+				<div class="panel-content">
+					<h3>Upload JSON file</h3>
+					<div class="file-input-container">
+						<input type="file" id="json-file-input" accept=".json">
+					</div>
+					<p id="instruction-text">Upload the subset graph by pressing the button and selecting the subset graph in json format.</p>
+					<p id="right-panel-instruction" class="hidden">Hover over nodes or edges to see properties in a tool tip or click to pin details here.</p>
+					<h3 class="hidden">Search</h3>
+					<input type="text" id="search-box" list="search-suggestions" placeholder="Search nodes or edges..." class="hidden">
+					<datalist id="search-suggestions"></datalist>
+					<h3 class="hidden">Details</h3>
+					<pre id="infoText" class="hidden">Select a node or edge to view details.</pre>
+				</div>
+			</div>
+			<button id="right-toggle" class="toggle-btn" aria-controls="right-panel" aria-expanded="true">></button>
+		</div>
+
+        <div id="bottom-resizer" class="hidden resizer bottom-resizer"></div>
+        <div id="bottom-panel" class="hidden panel bottom-panel">
+            <div class="lists-panel-header">
+        <button id="bottom-toggle" class="hidden toggle-btn" aria-controls="bottom-panel" aria-expanded="true">˅</button>
+                <h3>Companies and Officers</h3>
+            </div>
+            <div class="lists-container">
+                <div class="list-section">
+                    <div class="list-title">Companies</div>
+                    <div class="list-table">
+                        <table id="company-table">
+                            <thead>
+                                <tr>
+                                    <th data-field="no">No.<span class="sort-indicator"></span></th>
+                                    <th data-field="folio">Folio<span class="sort-indicator"></span></th>
+                                    <th data-field="ruc">RUC<span class="sort-indicator"></span></th>
+                                    <th data-field="estatus">Estatus<span class="sort-indicator"></span></th>
+                                    <th data-field="name">Razón Social<span class="sort-indicator"></span></th>
+                                    <th data-field="incorporationDate">Fecha Incorporación<span class="sort-indicator"></span></th>
+                                    <th data-field="dissolutionDate">Fecha Disolución<span class="sort-indicator"></span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="company-tbody"></tbody>
+                        </table>
+                        <div class="pagination-controls" id="company-pagination">
+                            <div class="pagination-info">
+                                <span id="company-page-info">Page 1 of 1</span>
+                                <div class="items-per-page">
+                                    <label>Items per page:</label>
+                                    <select id="company-items-per-page">
+                                        <option value="10">10</option>
+                                        <option value="25" selected>25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="pagination-buttons">
+                                <button id="company-first-page">First</button>
+                                <button id="company-prev-page">Previous</button>
+                                <button id="company-next-page">Next</button>
+                                <button id="company-last-page">Last</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="list-section">
+                    <div class="list-title">Officers</div>
+                    <div class="list-table">
+                        <table id="officer-table">
+                            <thead>
+                                <tr>
+                                    <th data-field="no">No.<span class="sort-indicator"></span></th>
+                                    <th data-field="name">Miembro Relacionado<span class="sort-indicator"></span></th>
+                                    //<th data-field="dni">CIP<span class="sort-indicator"></span></th>
+                                    <th data-field="genre">Género<span class="sort-indicator"></span></th>
+                                    <th data-field="idoneidad">Idoneidad<span class="sort-indicator"></span></th>
+                                    <th data-field="inicioIdoneidad">Inicio Idoneidad<span class="sort-indicator"></span></th>
+                                    <th data-field="role">Cargo<span class="sort-indicator"></span></th>
+                                    <th data-field="startDate">Fecha Inicio<span class="sort-indicator"></span></th>
+                                    <th data-field="endDate">Fecha Final<span class="sort-indicator"></span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="officer-tbody"></tbody>
+                        </table>
+                        <div class="pagination-controls" id="officer-pagination">
+                            <div class="pagination-info">
+                                <span id="officer-page-info">Page 1 of 1</span>
+                                <div class="items-per-page">
+                                    <label>Items per page:</label>
+                                    <select id="officer-items-per-page">
+                                        <option value="10">10</option>
+                                        <option value="25" selected>25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="pagination-buttons">
+                                <button id="officer-first-page">First</button>
+                                <button id="officer-prev-page">Previous</button>
+                                <button id="officer-next-page">Next</button>
+                                <button id="officer-last-page">Last</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="list-section">
+                    <div class="list-title">Statistics</div>
+                    <div class="list-table">
+                        <table id="roles-table">
+                            <thead>
+                                <tr>
+                                    <th>Statistic</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody id="roles-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<script src="https://visjs.github.io/vis-network/standalone/umd/vis-network.min.js"></script>
+<script>
+    // Utility functions for performance optimization
+    function debounce(func, delay) {
+        let timeout;
+        return function(...args) {
+            const context = this;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(context, args), delay);
+        };
+    }
+
+    function throttle(func, limit) {
+        let inThrottle;
+        return function(...args) {
+            const context = this;
+            if (!inThrottle) {
+                func.apply(context, args);
+                inThrottle = true;
+                setTimeout(() => (inThrottle = false), limit);
+            }
+        };
+    }
+
+    const app = {
+        config: {
+            rightPanelExpandedWidth: 300,
+            bottomPanelExpandedHeight: 300,
+        },
+        state: {
+            network: null,
+            nodes: [],
+            edges: [],
+            companies: [],
+            officers: [],
+            roleMap: new Map(),
+            currentCompanySort: { field: 'name', direction: 'asc' },
+            currentOfficerSort: { field: 'name', direction: 'asc' },
+            selectedNode: null,
+            selectedCompany: null,
+            selectedOfficer: null,
+            selectedRole: null,
+            contextMenuTarget: null,
+            reachableNodes: new Set(),
+            // Pagination state
+            pagination: {
+                company: {
+                    currentPage: 1,
+                    itemsPerPage: 25,
+                    filteredData: []
+                },
+                officer: {
+                    currentPage: 1,
+                    itemsPerPage: 25,
+                    filteredData: []
+                }
+            }
+        },
+        dom: {},
+        init() {
+            this.dom = this.cacheDom();
+            this.ui.initPanels();
+            this.ui.initContextMenu();
+            this.initEventListeners();
+
+            // Check for auto-load parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const dataPath = urlParams.get('data');
+            
+            if (dataPath) {
+                this.dom.loadingSpinner.style.display = 'flex';
+                this.dom.instructionText.textContent = `Fetching secure data: ${dataPath}...`;
+                
+                // Get key from fragment (#key=...)
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                let key = hashParams.get('key');
+
+                fetch(dataPath)
+                    .then(response => {
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        return response.arrayBuffer();
+                    })
+                    .then(async (buffer) => {
+                        if (dataPath.endsWith('.enc')) {
+                            if (!key) {
+                                key = prompt("This data is encrypted. Please enter the password:");
+                            }
+                            if (!key) {
+                                this.dom.loadingSpinner.style.display = 'none';
+                                this.dom.instructionText.textContent = "Decryption cancelled. Upload a file manually.";
+                                return;
+                            }
+                            const text = await this.data.decrypt(buffer, key);
+                            this.data.processLoadedData(text);
+                        } else {
+                            // Plain JSON file
+                            const text = new TextDecoder().decode(buffer);
+                            this.data.processLoadedData(text);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Auto-load failed:", error);
+                        this.dom.loadingSpinner.style.display = 'none';
+                        this.dom.instructionText.textContent = "Failed to load remote data. Please upload manually.";
+                    });
+            }
+        },
+        cacheDom() {
+            return {
+                appContainer: document.getElementById('app-container'),
+                mainPanel: document.getElementById('main-panel'),
+                loadingSpinner: document.getElementById('loading-spinner'),
+                network: document.getElementById('network'),
+                zoomInBtn: document.getElementById('zoom-in-btn'),
+                zoomOutBtn: document.getElementById('zoom-out-btn'),
+                centerBtn: document.getElementById('center-btn'),
+                downloadBtn: document.getElementById('download-btn'),
+                rightPanel: document.getElementById('right-panel'),
+                rightResizer: document.getElementById('right-resizer'),
+                rightToggle: document.getElementById('right-toggle'),
+                jsonFileInput: document.getElementById('json-file-input'),
+                instructionText: document.getElementById('instruction-text'),
+                rightPanelInstruction: document.getElementById('right-panel-instruction'),
+                searchBox: document.getElementById('search-box'),
+                searchSuggestions: document.getElementById('search-suggestions'),
+                infoText: document.getElementById('infoText'),
+                bottomPanel: document.getElementById('bottom-panel'),
+                bottomResizer: document.getElementById('bottom-resizer'),
+                bottomToggle: document.getElementById('bottom-toggle'),
+                companyTbody: document.getElementById('company-tbody'),
+                officerTbody: document.getElementById('officer-tbody'),
+                rolesTbody: document.getElementById('roles-tbody'),
+                companyTable: document.getElementById('company-table'),
+                officerTable: document.getElementById('officer-table'),
+                // Pagination elements
+                companyPageInfo: document.getElementById('company-page-info'),
+                companyItemsPerPage: document.getElementById('company-items-per-page'),
+                companyFirstPage: document.getElementById('company-first-page'),
+                companyPrevPage: document.getElementById('company-prev-page'),
+                companyNextPage: document.getElementById('company-next-page'),
+                companyLastPage: document.getElementById('company-last-page'),
+                officerPageInfo: document.getElementById('officer-page-info'),
+                officerItemsPerPage: document.getElementById('officer-items-per-page'),
+                officerFirstPage: document.getElementById('officer-first-page'),
+                officerPrevPage: document.getElementById('officer-prev-page'),
+                officerNextPage: document.getElementById('officer-next-page'),
+                officerLastPage: document.getElementById('officer-last-page'),
+                contextMenu: document.getElementById('context-menu'),
+                menuHighlightRecursive: document.getElementById('menu-highlight-recursive'),
+                menuHideHighlighted: document.getElementById('menu-hide-highlighted'),
+                menuHideUnhighlighted: document.getElementById('menu-hide-unhighlighted'),
+                menuClearHighlight: document.getElementById('menu-clear-highlight'),
+            };
+        },
+        initEventListeners() {
+            this.dom.jsonFileInput.addEventListener('change', (event) => this.handleFile(event));
+            
+            // Handle context menu closing
+            document.addEventListener('click', (e) => {
+                if (this.dom.contextMenu && !this.dom.contextMenu.contains(e.target)) {
+                    this.ui.hideContextMenu();
+                }
+            });
+            
+            // Debounced search
+            this.dom.searchBox.addEventListener('input', debounce(() => this.ui.handleSearch(), 300));
+            this.dom.searchBox.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && this.dom.searchBox.value) {
+                    this.ui.handleSearch(true);
+                }
+            });
+            
+            this.dom.companyTable.addEventListener('click', (e) => this.ui.handleSort('company', e));
+            this.dom.officerTable.addEventListener('click', (e) => this.ui.handleSort('officer', e));
+
+            // Pagination event listeners
+            this.dom.companyItemsPerPage.addEventListener('change', () => this.ui.changeItemsPerPage('company'));
+            this.dom.companyFirstPage.addEventListener('click', () => this.ui.goToPage('company', 1));
+            this.dom.companyPrevPage.addEventListener('click', () => this.ui.previousPage('company'));
+            this.dom.companyNextPage.addEventListener('click', () => this.ui.nextPage('company'));
+            this.dom.companyLastPage.addEventListener('click', () => this.ui.goToLastPage('company'));
+
+            this.dom.officerItemsPerPage.addEventListener('change', () => this.ui.changeItemsPerPage('officer'));
+            this.dom.officerFirstPage.addEventListener('click', () => this.ui.goToPage('officer', 1));
+            this.dom.officerPrevPage.addEventListener('click', () => this.ui.previousPage('officer'));
+            this.dom.officerNextPage.addEventListener('click', () => this.ui.nextPage('officer'));
+            this.dom.officerLastPage.addEventListener('click', () => this.ui.goToLastPage('officer'));
+        },
+        handleFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            this.dom.loadingSpinner.style.display = 'flex';
+            const reader = new FileReader();
+            const isEncrypted = file.name.endsWith('.enc');
+
+            reader.onload = async (e) => {
+                try {
+                    let text;
+                    if (isEncrypted) {
+                        const password = prompt("This file is encrypted. Please enter the password:");
+                        if (!password) {
+                            this.dom.loadingSpinner.style.display = 'none';
+                            return;
+                        }
+                        text = await this.data.decrypt(e.target.result, password);
+                    } else {
+                        text = e.target.result;
+                    }
+                    
+                    this.data.processLoadedData(text);
+
+                } catch (error) {
+                    this.dom.loadingSpinner.style.display = 'none';
+                    console.error("Loading error:", error);
+                    alert(`Failed to load file: ${error.message}.`);
+                }
+            };
+            
+            if (isEncrypted) {
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.readAsText(file);
+            }
+        },
+        data: {
+            parseAndProcess(text) {
+                const lines = text.trim().split('\n');
+                const rawObjects = lines.map(line => {
+                    try {
+                        return JSON.parse(line);
+                    } catch (e) {
+                        console.warn("Skipping invalid JSON line:", line);
+                        return null;
+                    }
+                }).filter(Boolean);
+
+                if (rawObjects.length === 0) {
+                    throw new Error('No valid JSON objects found in file');
+                }
+
+                const nodesMap = new Map();
+                const edgesArr = [];
+                const companiesMap = new Map();
+                const officersArr = [];
+                const roleCountMap = new Map();
+
+                rawObjects.forEach(item => {
+                    const companyData = item.c;
+                    const officerData = item.o;
+                    const relData = item.r;
+
+                    if (companyData && companyData.properties) {
+                        if (!nodesMap.has(companyData.id)) {
+                            let companyTitle = `Company\n${app.data.toTitleCase(companyData.properties.name || '')}`;
+                            if (companyData.properties.Ficha) companyTitle += `\nFolio: ${companyData.properties.Ficha}`;
+                            if (companyData.properties.RUC) companyTitle += `\nRUC: ${companyData.properties.RUC}`;
+                            if (companyData.properties.Estatus) companyTitle += `\nEstatus: ${companyData.properties.Estatus}`;
+                            if (companyData.properties.companyIncorporationDate) companyTitle += `\nFecha Inscripción: ${companyData.properties.companyIncorporationDate}`;
+                            if (companyData.properties.endDate) companyTitle += `\nFecha Disolución: ${companyData.properties.endDate}`;
+
+                            nodesMap.set(companyData.id, {
+                                id: companyData.id,
+                                label: companyData.properties.name || 'Unknown Company',
+                                group: 'company',
+                                title: companyTitle,
+                                properties: companyData.properties
+                            });
+                        }
+                        if (!companiesMap.has(companyData.id)) {
+                            companiesMap.set(companyData.id, {
+                                id: companyData.id,
+                                folio: companyData.properties.Ficha || '',
+                                ruc: companyData.properties.RUC || '',
+                                estatus: companyData.properties.Estatus || '',
+                                name: companyData.properties.name || 'Unknown Company',
+                                incorporationDate: companyData.properties.companyIncorporationDate || '',
+                                dissolutionDate: companyData.properties.endDate || '',
+                            });
+                        }
+                    }
+
+                    if (officerData && officerData.properties) {
+                        if (!nodesMap.has(officerData.id)) {
+                            let officerTitle = `Officer\n${app.data.toTitleCase(officerData.properties.name || '')}`;
+                            //if (officerData.properties.dni) officerTitle += `\nCIP: ${officerData.properties.dni}`;
+                            if (officerData.properties.genre) officerTitle += `\nGénero: ${officerData.properties.genre}`;
+                            if (officerData.properties.Idoneidad) officerTitle += `\nIdoneidad: ${officerData.properties.Idoneidad}`;
+                            if (officerData.properties.startDateIdoneidad) officerTitle += `\nInicio Idoneidad: ${officerData.properties.startDateIdoneidad}`;
+
+                            nodesMap.set(officerData.id, {
+                                id: officerData.id,
+                                label: officerData.properties.name || 'Unknown Officer',
+                                group: 'officer',
+                                title: officerTitle,
+                                properties: officerData.properties
+                            });
+                        }
+                    }
+
+                    if (relData && relData.properties && relData.start && relData.end && officerData && officerData.properties) {
+                        let edgeTitle = '';
+                        if (relData.properties.role) edgeTitle += `Cargo: ${relData.properties.role}`;
+                        if (relData.properties.startDate) edgeTitle += `\nFecha Inicial: ${relData.properties.startDate}`;
+                        if (relData.properties.endDate) edgeTitle += `\nFecha Final: ${relData.properties.endDate}`;
+
+                        edgesArr.push({
+                            from: relData.start.id,
+                            to: relData.end.id,
+                            label: relData.properties.role || '',
+                            title: edgeTitle,
+                            properties: relData.properties
+                        });
+
+                        const role = relData.properties.role || 'N/A';
+                        roleCountMap.set(role, (roleCountMap.get(role) || 0) + 1);
+
+                        officersArr.push({
+                            id: officerData.id,
+                            name: officerData.properties.name || 'Unknown Officer',
+                            dni: officerData.properties.dni || '',
+                            genre: officerData.properties.genre || '',
+                            idoneidad: officerData.properties.Idoneidad || '',
+                            inicioIdoneidad: officerData.properties.startDateIdoneidad || '',
+                            role: relData.properties.role || '',
+                            startDate: relData.properties.startDate || '',
+                            endDate: relData.properties.endDate || '',
+                        });
+                    }
+                });
+
+                return {
+                    nodes: Array.from(nodesMap.values()),
+                    edges: edgesArr,
+                    companies: Array.from(companiesMap.values()),
+                    officers: officersArr,
+                    roleMap: roleCountMap
+                };
+            },
+            getRelatedOfficers(companyId) {
+                const relatedEdges = app.state.edges.filter(edge => edge.from === companyId || edge.to === companyId);
+                const officerIds = relatedEdges.map(edge => edge.from === companyId ? edge.to : edge.from);
+                return app.state.officers.filter(officer => officerIds.includes(officer.id)).map(officer => ({
+                    ...officer,
+                    role: app.state.edges.find(e => (e.from === companyId && e.to === officer.id) || (e.to === companyId && e.from === officer.id))?.properties?.role || '',
+                    startDate: app.state.edges.find(e => (e.from === companyId && e.to === officer.id) || (e.to === companyId && e.from === officer.id))?.properties?.startDate || '',
+                    endDate: app.state.edges.find(e => (e.from === companyId && e.to === officer.id) || (e.to === companyId && e.from === officer.id))?.properties?.endDate || ''
+                }));
+            },
+            getRelatedCompanies(officerId) {
+                const relatedEdges = app.state.edges.filter(edge => edge.from === officerId || edge.to === officerId);
+                const companyIds = relatedEdges.map(edge => edge.from === officerId ? edge.to : edge.from);
+                return app.state.companies.filter(company => companyIds.includes(company.id));
+            },
+            getRelatedOfficersForOfficer(officerId) {
+                const relatedCompanies = this.getRelatedCompanies(officerId);
+                const allRelatedOfficers = new Set();
+                relatedCompanies.forEach(company => {
+                    const companyOfficers = this.getRelatedOfficers(company.id);
+                    companyOfficers.forEach(officer => {
+                        if (officer.id !== officerId) {
+                            allRelatedOfficers.add(officer);
+                        }
+                    });
+                });
+                return Array.from(allRelatedOfficers);
+            },
+            sortData(data, field, direction) {
+                return data.sort((a, b) => {
+                    let aVal = a[field] || '';
+                    let bVal = b[field] || '';
+                    if (field === 'no') {
+                        aVal = parseInt(aVal) || 0;
+                        bVal = parseInt(bVal) || 0;
+                    } else if (field.includes('Date') || field === 'incorporationDate' || field === 'dissolutionDate') {
+                        aVal = aVal ? new Date(aVal) : new Date(0);
+                        bVal = bVal ? new Date(bVal) : new Date(0);
+                    }
+                    if (direction === 'asc') {
+                        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                    } else {
+                        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+                    }
+                });
+            },
+            toTitleCase(str) {
+                if (!str) return '';
+                return str.toLowerCase().split(' ').map(function(word) {
+                    return word.charAt(0).toUpperCase() + word.slice(1);
+                }).join(' ');
+            },
+            async decrypt(encryptedBuffer, password) {
+                const combined = new Uint8Array(encryptedBuffer);
+                const salt = combined.slice(0, 16);
+                const iv = combined.slice(16, 28);
+                const data = combined.slice(28);
+
+                const encoder = new TextEncoder();
+                const passwordKey = await window.crypto.subtle.importKey(
+                    "raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]
+                );
+
+                const aesKey = await window.crypto.subtle.deriveKey(
+                    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+                    passwordKey,
+                    { name: "AES-GCM", length: 256 },
+                    false, ["decrypt"]
+                );
+
+                const decrypted = await window.crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv }, aesKey, data
+                );
+
+                return new TextDecoder().decode(decrypted);
+            },
+            processLoadedData(text) {
+                if (!text || text.trim() === '') {
+                    throw new Error('Data is empty');
+                }
+                
+                const graphData = app.data.parseAndProcess(text);
+                
+                if (!graphData || !graphData.nodes || !graphData.edges) {
+                    throw new Error('Invalid data structure');
+                }
+
+                app.state.nodes = graphData.nodes;
+                app.state.edges = graphData.edges;
+                app.state.companies = graphData.companies.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                app.state.officers = graphData.officers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                app.state.roleMap = graphData.roleMap;
+
+                app.state.pagination.company.filteredData = [...app.state.companies];
+                app.state.pagination.officer.filteredData = [...app.state.officers];
+
+                app.graph.render(graphData);
+                app.ui.renderAllTables();
+                app.ui.showPostLoadElements();
+
+                app.state.network.on('stabilized', () => {
+                    app.dom.loadingSpinner.style.display = 'none';
+                });
+
+                setTimeout(() => {
+                    if (app.dom.loadingSpinner.style.display === 'flex') {
+                        app.dom.loadingSpinner.style.display = 'none';
+                    }
+                }, 5000);
+            }
+        },
+        graph: {
+            render(data) {
+                const container = app.dom.network;
+                
+                if (app.state.network) {
+                    app.state.network.destroy();
+                    app.state.network = null;
+                }
+                
+                const nodesDataSet = new vis.DataSet(data.nodes);
+                const edgesDataSet = new vis.DataSet(data.edges);
+
+                const graph = { nodes: nodesDataSet, edges: edgesDataSet };
+                const options = {
+                    nodes: {
+                        shape: 'dot',
+                        size: 16,
+                        font: { size: 12, color: '#333' },
+                        borderWidth: 2,
+                    },
+                    edges: {
+                        width: 0.15,
+                        color: { inherit: 'from' },
+                        smooth: { type: 'continuous' }
+                    },
+                    groups: {
+                        company: { color: { background: '#f0ad4e', border: '#f0ad4e' }, shape: 'dot', size: 18 },
+                        officer: { color: { background: '#5bc0de', border: '#5bc0de' }, shape: 'dot' }
+                    },
+                    physics: {
+                        forceAtlas2Based: { gravitationalConstant: -50, centralGravity: 0.01, springLength: 200, springConstant: 0.08 },
+                        maxVelocity: 50,
+                        solver: 'forceAtlas2Based',
+                        timestep: 0.5,
+                        stabilization: { iterations: 150 }
+                    },
+                    interaction: {
+                        tooltipDelay: 200,
+                        hideEdgesOnDrag: true,
+                        hover: true
+                    }
+                };
+                app.state.network = new vis.Network(container, graph, options);
+                this.initGraphEventListeners();
+            },
+            initGraphEventListeners() {
+                app.dom.zoomInBtn.onclick = () => {
+                    if (app.state.network) {
+                        app.state.network.moveTo({ scale: app.state.network.getScale() * 1.2 });
+                    }
+                };
+                app.dom.zoomOutBtn.onclick = () => {
+                    if (app.state.network) {
+                        app.state.network.moveTo({ scale: app.state.network.getScale() * 0.8 });
+                    }
+                };
+                app.dom.centerBtn.onclick = () => this.center();
+
+                if (app.state.network) {
+                    app.state.network.on("click", (params) => this.handleClick(params));
+                    app.state.network.on("oncontext", (params) => {
+                        params.event.preventDefault();
+                        const nodeId = app.state.network.getNodeAt(params.pointer.DOM);
+                        if (nodeId) {
+                            app.ui.showContextMenu(params.event.pageX, params.event.pageY, nodeId);
+                        }
+                    });
+                }
+            },
+            handleClick(params) {
+                app.ui.hideContextMenu();
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    const clickedNode = app.state.nodes.find(n => n.id === nodeId);
+                    if (clickedNode && clickedNode.group === 'company') {
+                        const company = app.state.companies.find(c => c.id === nodeId);
+                        if (company) app.ui.selectCompany(company);
+                    } else if (clickedNode && clickedNode.group === 'officer') {
+                        const officer = app.state.officers.find(o => o.id === nodeId);
+                        if (officer) app.ui.selectOfficer(officer);
+                    }
+                } else if (params.edges.length > 0) {
+                    const edgeData = app.state.network.body.data.edges.get(params.edges[0]);
+                    let displayContent = '';
+                    if (edgeData.label) displayContent += `Cargo: ${edgeData.label}\n`;
+                    if (edgeData.properties && edgeData.properties.startDate) displayContent += `Fecha Inicial: ${edgeData.properties.startDate}\n`;
+                    if (edgeData.properties && edgeData.properties.endDate) displayContent += `Fecha Final: ${edgeData.properties.endDate}\n`;
+                    app.dom.infoText.textContent = displayContent;
+                } else {
+                    app.ui.resetSelection();
+                    app.graph.clearRecursiveHighlight();
+                    if (app.state.network) {
+                        app.state.network.fit();
+                    }
+                }
+                app.ui.updateSearchSuggestions();
+            },
+            highlightRecursive(startNodeId) {
+                if (!app.state.network) return;
+                
+                app.state.reachableNodes = new Set();
+                const stack = [startNodeId];
+                app.state.reachableNodes.add(startNodeId);
+
+                while (stack.length > 0) {
+                    const currentId = stack.pop();
+                    app.state.edges.forEach(edge => {
+                        let neighborId = null;
+                        if (edge.from === currentId) neighborId = edge.to;
+                        else if (edge.to === currentId) neighborId = edge.from;
+
+                        if (neighborId !== null) {
+                            if (!app.state.reachableNodes.has(neighborId)) {
+                                app.state.reachableNodes.add(neighborId);
+                                stack.push(neighborId);
+                            }
+                        }
+                    });
+                }
+
+                // Apply visual changes
+                const allNodeIds = app.state.network.body.data.nodes.getIds();
+                const nodeUpdates = allNodeIds.map(id => {
+                    const isReachable = app.state.reachableNodes.has(id);
+                    return {
+                        id: id,
+                        opacity: isReachable ? 1 : 0.1,
+                        font: { color: isReachable ? '#333' : 'rgba(0,0,0,0.1)' }
+                    };
+                });
+                app.state.network.body.data.nodes.update(nodeUpdates);
+
+                const allEdgeIds = app.state.network.body.data.edges.getIds();
+                const edgeUpdates = allEdgeIds.map(id => {
+                    const edge = app.state.network.body.data.edges.get(id);
+                    const isReachable = app.state.reachableNodes.has(edge.from) && app.state.reachableNodes.has(edge.to);
+                    return {
+                        id: id,
+                        opacity: isReachable ? 1 : 0.05
+                    };
+                });
+                app.state.network.body.data.edges.update(edgeUpdates);
+                
+                app.state.network.fit({ nodes: Array.from(app.state.reachableNodes), animation: true });
+            },
+            hideHighlighted() {
+                if (!app.state.network || app.state.reachableNodes.size === 0) return;
+                const nodesToHide = Array.from(app.state.reachableNodes);
+                app.state.network.body.data.nodes.update(nodesToHide.map(id => ({ id, hidden: true })));
+                this.resetVisuals();
+                app.state.reachableNodes = new Set();
+            },
+            hideUnhighlighted() {
+                if (!app.state.network || app.state.reachableNodes.size === 0) return;
+                const allNodeIds = app.state.network.body.data.nodes.getIds();
+                const nodesToHide = allNodeIds.filter(id => !app.state.reachableNodes.has(id));
+                app.state.network.body.data.nodes.update(nodesToHide.map(id => ({ id, hidden: true })));
+                this.resetVisuals();
+                app.state.reachableNodes = new Set();
+            },
+            resetVisuals() {
+                if (!app.state.network) return;
+                const allNodeIds = app.state.network.body.data.nodes.getIds();
+                app.state.network.body.data.nodes.update(allNodeIds.map(id => ({ 
+                    id: id, 
+                    opacity: 1,
+                    font: { color: '#333' }
+                })));
+                const allEdgeIds = app.state.network.body.data.edges.getIds();
+                app.state.network.body.data.edges.update(allEdgeIds.map(id => ({ 
+                    id: id, 
+                    opacity: 1 
+                })));
+            },
+            clearRecursiveHighlight() {
+                if (!app.state.network) return;
+                
+                app.state.reachableNodes = new Set();
+                const allNodeIds = app.state.network.body.data.nodes.getIds();
+                app.state.network.body.data.nodes.update(allNodeIds.map(id => ({ 
+                    id: id, 
+                    opacity: 1,
+                    hidden: false,
+                    font: { color: '#333' }
+                })));
+
+                const allEdgeIds = app.state.network.body.data.edges.getIds();
+                app.state.network.body.data.edges.update(allEdgeIds.map(id => ({ 
+                    id: id, 
+                    opacity: 1,
+                    hidden: false
+                })));
+            },
+            center() {
+                if (!app.state.network) return;
+                const nodesToFit = this.getNodesForZoom();
+                if (nodesToFit.length > 0) {
+                    app.state.network.fit({ nodes: nodesToFit, animation: true });
+                } else {
+                    app.ui.resetSelection();
+                    app.state.network.fit();
+                }
+            },
+            getNodesForZoom() {
+                if (app.state.selectedCompany) {
+                    const relatedOfficers = app.data.getRelatedOfficers(app.state.selectedCompany.id);
+                    return [app.state.selectedCompany.id, ...relatedOfficers.map(o => o.id)];
+                } else if (app.state.selectedOfficer) {
+                    const relatedCompanies = app.data.getRelatedCompanies(app.state.selectedOfficer.id);
+                    const relatedOfficers = app.data.getRelatedOfficersForOfficer(app.state.selectedOfficer.id);
+                    return [app.state.selectedOfficer.id, ...relatedCompanies.map(c => c.id), ...relatedOfficers.map(o => o.id)];
+                }
+                return [];
+            }
+        },
+        ui: {
+            initPanels() {
+                app.dom.rightPanel.appendChild(app.dom.rightToggle);
+                app.dom.rightToggle.title = 'Collapse';
+                
+                // Throttled resize handlers
+                const throttledResizeRight = throttle((e) => this.resizeRight(e), 16);
+                const throttledResizeBottom = throttle((e) => this.resizeBottom(e), 16);
+                
+                app.dom.rightResizer.addEventListener('mousedown', (e) => this.startResize(e, 'right', throttledResizeRight));
+                app.dom.bottomResizer.addEventListener('mousedown', (e) => this.startResize(e, 'bottom', throttledResizeBottom));
+                app.dom.rightToggle.addEventListener('click', () => this.togglePanel('right'));
+                app.dom.bottomToggle.addEventListener('click', () => this.togglePanel('bottom'));
+            },
+            startResize(e, panel, moveHandler) {
+                e.preventDefault();
+                const stopHandler = () => {
+                    document.removeEventListener('mousemove', moveHandler);
+                    document.removeEventListener('mouseup', stopHandler);
+                };
+                document.addEventListener('mousemove', moveHandler);
+                document.addEventListener('mouseup', stopHandler);
+            },
+            resizeRight(e) {
+                const newWidth = window.innerWidth - e.clientX;
+                if (newWidth > 50 && newWidth < window.innerWidth - 100) {
+                    app.dom.rightPanel.style.width = newWidth + 'px';
+                    app.config.rightPanelExpandedWidth = rightPanelExpandedWidth;
+                }
+            },
+            resizeBottom(e) {
+                const newHeight = window.innerHeight - e.clientY;
+                if (newHeight > 50 && newHeight < window.innerHeight - 100) {
+                    app.dom.bottomPanel.style.height = newHeight + 'px';
+                    app.config.bottomPanelExpandedHeight = bottomPanelExpandedHeight;
+                }
+            },
+            togglePanel(panel) {
+                const p = app.dom[panel + 'Panel'];
+                const r = app.dom[panel + 'Resizer'];
+                const t = app.dom[panel + 'Toggle'];
+                const isHidden = !p.classList.contains('hidden');
+
+                p.classList.toggle('hidden');
+                r.classList.toggle('hidden');
+
+                if (panel === 'right') {
+                    t.textContent = isHidden ? '<' : '>';
+                    t.title = isHidden ? 'Expand' : 'Collapse';
+                    if (!isHidden) p.style.width = app.config.rightPanelExpandedWidth + 'px';
+                    if (isHidden) {
+                        app.dom.appContainer.appendChild(t);
+                    } else {
+                        p.appendChild(t);
+                    }
+                } else {
+                    t.textContent = isHidden ? '^' : '˅';
+                    t.title = isHidden ? 'Expand' : 'Collapse';
+                    if (!isHidden) p.style.height = app.config.bottomPanelExpandedHeight + 'px';
+                    if (isHidden) {
+                        app.dom.appContainer.appendChild(t);
+                    } else {
+                        p.appendChild(t);
+                    }
+                }
+                t.setAttribute('aria-expanded', !isHidden);
+            },
+            showPostLoadElements() {
+                const elementsToShow = [
+                    app.dom.bottomPanel, 
+                    app.dom.bottomResizer, 
+                    app.dom.bottomToggle, 
+                    app.dom.rightPanelInstruction, 
+                    app.dom.searchBox, 
+                    app.dom.infoText, 
+                    app.dom.zoomInBtn, 
+                    app.dom.zoomOutBtn, 
+                    app.dom.centerBtn, 
+                    app.dom.downloadBtn
+                ];
+                
+                elementsToShow.forEach(el => {
+                    if (el) el.classList.remove('hidden');
+                });
+                
+                document.querySelectorAll('#right-panel h3').forEach(h3 => h3.classList.remove('hidden'));
+            },
+            renderAllTables() {
+                this.renderCompanyTable();
+                this.renderOfficerTable();
+                this.renderRolesTable();
+            },
+            // Pagination utility functions
+            getTotalPages(type) {
+                const data = app.state.pagination[type].filteredData;
+                const itemsPerPage = app.state.pagination[type].itemsPerPage;
+                return Math.ceil(data.length / itemsPerPage);
+            },
+            getPageData(type) {
+                const pagination = app.state.pagination[type];
+                const startIndex = (pagination.currentPage - 1) * pagination.itemsPerPage;
+                const endIndex = startIndex + pagination.itemsPerPage;
+                return pagination.filteredData.slice(startIndex, endIndex);
+            },
+            updatePaginationControls(type) {
+                const pagination = app.state.pagination[type];
+                const totalPages = this.getTotalPages(type);
+                
+                // Update page info
+                app.dom[type + 'PageInfo'].textContent = `Page ${pagination.currentPage} of ${totalPages}`;
+                
+                // Update button states
+                app.dom[type + 'FirstPage'].disabled = pagination.currentPage === 1;
+                app.dom[type + 'PrevPage'].disabled = pagination.currentPage === 1;
+                app.dom[type + 'NextPage'].disabled = pagination.currentPage === totalPages;
+                app.dom[type + 'LastPage'].disabled = pagination.currentPage === totalPages;
+                
+                // Update items per page
+                app.dom[type + 'ItemsPerPage'].value = pagination.itemsPerPage;
+            },
+            // Pagination control functions
+            goToPage(type, page) {
+                const totalPages = this.getTotalPages(type);
+                if (page >= 1 && page <= totalPages) {
+                    app.state.pagination[type].currentPage = page;
+                    if (type === 'company') {
+                        this.renderCompanyTable();
+                    } else {
+                        this.renderOfficerTable();
+                    }
+                }
+            },
+            previousPage(type) {
+                const currentPage = app.state.pagination[type].currentPage;
+                if (currentPage > 1) {
+                    this.goToPage(type, currentPage - 1);
+                }
+            },
+            nextPage(type) {
+                const currentPage = app.state.pagination[type].currentPage;
+                const totalPages = this.getTotalPages(type);
+                if (currentPage < totalPages) {
+                    this.goToPage(type, currentPage + 1);
+                }
+            },
+            goToLastPage(type) {
+                const totalPages = this.getTotalPages(type);
+                this.goToPage(type, totalPages);
+            },
+            changeItemsPerPage(type) {
+                const newItemsPerPage = parseInt(app.dom[type + 'ItemsPerPage'].value);
+                app.state.pagination[type].itemsPerPage = newItemsPerPage;
+                app.state.pagination[type].currentPage = 1; // Reset to first page
+                if (type === 'company') {
+                    this.renderCompanyTable();
+                } else {
+                    this.renderOfficerTable();
+                }
+            },
+            renderCompanyTable(companyData = null) {
+                const tbody = app.dom.companyTbody;
+                if (!tbody) return;
+                
+                // Use provided data or get paginated data
+                const dataToRender = companyData || this.getPageData('company');
+                
+                tbody.innerHTML = '';
+                dataToRender.forEach((company, index) => {
+                    const globalIndex = companyData ? index : 
+                        (app.state.pagination.company.currentPage - 1) * app.state.pagination.company.itemsPerPage + index;
+                    
+                    const row = document.createElement('tr');
+                    row.dataset.companyId = company.id;
+                    row.classList.toggle('selected', app.state.selectedCompany && app.state.selectedCompany.id === company.id);
+                    row.innerHTML = `
+                        <td>${globalIndex + 1}</td>
+                        <td title="${company.folio || ''}">${company.folio || ''}</td>
+                        <td title="${company.ruc || ''}">${company.ruc || ''}</td>
+                        <td title="${company.estatus || ''}">${company.estatus || ''}</td>
+                        <td title="${company.name || ''}">${company.name || ''}</td>
+                        <td title="${company.incorporationDate || ''}">${company.incorporationDate || ''}</td>
+                        <td title="${company.dissolutionDate || ''}">${company.dissolutionDate || ''}</td>
+                    `;
+                    row.addEventListener('click', () => this.selectCompany(company));
+                    row.addEventListener('mouseenter', () => this.highlightNode(company.id, 'company'));
+                    row.addEventListener('mouseleave', () => this.unhighlightNode(company.id, 'company'));
+                    row.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        this.showContextMenu(e.pageX, e.pageY, company.id);
+                    });
+                    tbody.appendChild(row);
+                });
+                
+                // Update pagination controls only if using paginated data
+                if (!companyData) {
+                    this.updatePaginationControls('company');
+                }
+            },
+            renderOfficerTable(officerData = null) {
+                const tbody = app.dom.officerTbody;
+                if (!tbody) return;
+                
+                // Use provided data or get paginated data
+                const dataToRender = officerData || this.getPageData('officer');
+                
+                tbody.innerHTML = '';
+                dataToRender.forEach((officer, index) => {
+                    const globalIndex = officerData ? index : 
+                        (app.state.pagination.officer.currentPage - 1) * app.state.pagination.officer.itemsPerPage + index;
+                    
+                    const row = document.createElement('tr');
+                    row.dataset.officerId = officer.id;
+                    row.classList.toggle('selected', app.state.selectedOfficer && app.state.selectedOfficer.id === officer.id);
+                    row.innerHTML = `
+                        <td>${globalIndex + 1}</td>
+                        <td title="${officer.name || ''}">${officer.name || ''}</td>
+                        <td title="${officer.dni || ''}">${officer.dni || ''}</td>
+                        <td title="${officer.genre || ''}">${officer.genre || ''}</td>
+                        <td title="${officer.idoneidad || ''}">${officer.idoneidad || ''}</td>
+                        <td title="${officer.inicioIdoneidad || ''}">${officer.inicioIdoneidad || ''}</td>
+                        <td title="${officer.role || ''}">${officer.role || ''}</td>
+                        <td title="${officer.startDate || ''}">${officer.startDate || ''}</td>
+                        <td title="${officer.endDate || ''}">${officer.endDate || ''}</td>
+                    `;
+                    row.addEventListener('click', () => this.selectOfficer(officer));
+                    row.addEventListener('mouseenter', () => this.highlightNode(officer.id, 'officer'));
+                    row.addEventListener('mouseleave', () => this.unhighlightNode(officer.id, 'officer'));
+                    row.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        this.showContextMenu(e.pageX, e.pageY, officer.id);
+                    });
+                    tbody.appendChild(row);
+                });
+                
+                // Update pagination controls only if using paginated data
+                if (!officerData) {
+                    this.updatePaginationControls('officer');
+                }
+            },
+            renderRolesTable() {
+                const tbody = app.dom.rolesTbody;
+                if (!tbody) return;
+                
+                tbody.innerHTML = '';
+
+                const totalCompanies = app.state.companies.length;
+                const totalOfficers = app.state.nodes.filter(n => n.group === 'officer').length;
+                const totalRelationships = app.state.edges.length;
+                const totalRoles = app.state.roleMap.size;
+
+                [
+                    { stat: 'Companies', value: totalCompanies },
+                    { stat: 'Officers', value: totalOfficers },
+                    { stat: 'Relationships', value: totalRelationships },
+                    { stat: 'Roles', value: totalRoles }
+                ].forEach(item => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${item.stat}</td><td>${item.value}</td>`;
+                    tbody.appendChild(row);
+                });
+
+                const sortedRoles = Array.from(app.state.roleMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+                if (sortedRoles.length > 0) {
+                    const headerRow = document.createElement('tr');
+                    headerRow.innerHTML = `<th colspan="2" style="background-color: #e0e0e0; text-align: center; font-weight: bold;">Role Distribution</th>`;
+                    tbody.appendChild(headerRow);
+                }
+
+                sortedRoles.forEach(([role, count]) => {
+                    const row = document.createElement('tr');
+                    row.dataset.role = role;
+                    row.innerHTML = `<td>${role}</td><td>${count}</td>`;
+                    row.addEventListener('click', () => this.selectRole(role));
+                    row.classList.toggle('selected', app.state.selectedRole === role);
+                    tbody.appendChild(row);
+                });
+            },
+            selectRole(role) {
+                app.state.selectedRole = role;
+                app.state.selectedCompany = null;
+                app.state.selectedOfficer = null;
+                this.highlightTableRow(null, null, role);
+
+                const filteredOfficers = app.state.officers.filter(officer => officer.role === role);
+                const companyIds = new Set();
+                filteredOfficers.forEach(officer => {
+                    const relatedCompanies = app.data.getRelatedCompanies(officer.id);
+                    relatedCompanies.forEach(company => companyIds.add(company.id));
+                });
+                const filteredCompanies = app.state.companies.filter(company => companyIds.has(company.id));
+
+                // Update pagination data
+                app.state.pagination.company.filteredData = filteredCompanies;
+                app.state.pagination.officer.filteredData = filteredOfficers;
+                app.state.pagination.company.currentPage = 1;
+                app.state.pagination.officer.currentPage = 1;
+
+                this.renderCompanyTable();
+                this.renderOfficerTable();
+                this.renderRolesTable();
+
+                if (app.state.network) {
+                    app.state.network.selectNodes([]);
+                    app.state.network.fit();
+                }
+                app.dom.infoText.textContent = `Selected Role: ${role}\nOfficers: ${filteredOfficers.length}\nCompanies: ${filteredCompanies.length}`;
+                this.expandPanelsOnSelection();
+            },
+            selectCompany(company) {
+                app.state.selectedCompany = company;
+                app.state.selectedOfficer = null;
+                app.state.selectedRole = null;
+                this.highlightTableRow(company.id, null, null);
+
+                const relatedOfficers = app.data.getRelatedOfficers(company.id);
+                const roleCounts = {};
+                relatedOfficers.forEach(officer => {
+                    if (officer.role) {
+                        roleCounts[officer.role] = (roleCounts[officer.role] || 0) + 1;
+                    }
+                });
+                const sortedRoles = Object.entries(roleCounts).sort((a, b) => a[0].localeCompare(b[0]));
+                const roleText = sortedRoles.length > 0 ? sortedRoles.map(([role, count]) => `${role}: ${count}`).join('\n') : 'None';
+
+                const sortedOfficers = app.data.sortData([...relatedOfficers], 'endDate', 'desc');
+
+                // Update pagination data
+                app.state.pagination.company.filteredData = [company];
+                app.state.pagination.officer.filteredData = sortedOfficers;
+                app.state.pagination.company.currentPage = 1;
+                app.state.pagination.officer.currentPage = 1;
+
+                this.renderCompanyTable();
+                this.renderOfficerTable();
+                this.renderRolesTable();
+
+                if (app.state.network) {
+                    app.state.network.selectNodes([company.id]);
+                    const nodesToFit = [company.id, ...relatedOfficers.map(o => o.id)];
+                    app.state.network.fit({ nodes: nodesToFit, animation: true });
+                }
+
+                let displayContent = `Company\n${app.data.toTitleCase(company.name || '')}\n`;
+                if (company.folio) displayContent += `Folio: ${company.folio}\n`;
+                if (company.ruc) displayContent += `RUC: ${company.ruc}\n`;
+                if (company.estatus) displayContent += `Estatus: ${company.estatus}\n`;
+                if (company.incorporationDate) displayContent += `Fecha Inscripción: ${company.incorporationDate}\n`;
+                if (company.dissolutionDate) displayContent += `Fecha Disolución: ${company.dissolutionDate}\n`;
+                displayContent += `\nDirect Officers: ${relatedOfficers.length}\nRoles:\n${roleText}`;
+                app.dom.infoText.textContent = displayContent;
+
+                this.expandPanelsOnSelection();
+            },
+            selectOfficer(officer) {
+                app.state.selectedOfficer = officer;
+                app.state.selectedCompany = null;
+                app.state.selectedRole = null;
+                this.highlightTableRow(null, officer.id, null);
+
+                const relatedCompanies = app.data.getRelatedCompanies(officer.id);
+                const roleCounts = {};
+                relatedCompanies.forEach(company => {
+                    const edge = app.state.edges.find(e => (e.from === officer.id && e.to === company.id) || (e.to === officer.id && e.from === company.id));
+                    if (edge && edge.properties && edge.properties.role) {
+                        roleCounts[edge.properties.role] = (roleCounts[edge.properties.role] || 0) + 1;
+                    }
+                });
+                const sortedRoles = Object.entries(roleCounts).sort((a, b) => a[0].localeCompare(b[0]));
+                const roleText = sortedRoles.length > 0 ? sortedRoles.map(([role, count]) => `${role}: ${count}`).join('\n') : 'None';
+
+                const relatedOfficers = app.data.getRelatedOfficersForOfficer(officer.id);
+                const sortedCompanies = app.data.sortData([...relatedCompanies], 'incorporationDate', 'desc');
+
+                // Update pagination data
+                app.state.pagination.company.filteredData = sortedCompanies;
+                app.state.pagination.officer.filteredData = relatedOfficers;
+                app.state.pagination.company.currentPage = 1;
+                app.state.pagination.officer.currentPage = 1;
+
+                this.renderCompanyTable();
+                this.renderOfficerTable();
+                this.renderRolesTable();
+
+                if (app.state.network) {
+                    app.state.network.selectNodes([officer.id]);
+                    const nodesToFit = [officer.id, ...relatedCompanies.map(c => c.id), ...relatedOfficers.map(o => o.id)];
+                    app.state.network.fit({ nodes: nodesToFit, animation: true });
+                }
+
+                const officerNode = app.state.nodes.find(n => n.id === officer.id);
+                let displayContent = `Officer\n${app.data.toTitleCase(officer.name || '')}\n`;
+                if (officerNode && officerNode.properties) {
+                    //if (officerNode.properties.dni) displayContent += `CIP: ${officerNode.properties.dni}\n`;
+                    if (officerNode.properties.genre) displayContent += `Género: ${officerNode.properties.genre}\n`;
+                    if (officerNode.properties.Idoneidad) displayContent += `Idoneidad: ${officerNode.properties.Idoneidad}\n`;
+                    if (officerNode.properties.startDateIdoneidad) displayContent += `Inicio Idoneidad: ${officerNode.properties.startDateIdoneidad}\n`;
+                }
+                displayContent += `\nDirect Companies: ${relatedCompanies.length}\nRoles:\n${roleText}`;
+                app.dom.infoText.textContent = displayContent;
+
+                this.expandPanelsOnSelection();
+            },
+            resetSelection() {
+                app.state.selectedNode = null;
+                app.state.selectedCompany = null;
+                app.state.selectedOfficer = null;
+                app.state.selectedRole = null;
+                
+                // Reset pagination data to full datasets
+                app.state.pagination.company.filteredData = [...app.state.companies];
+                app.state.pagination.officer.filteredData = [...app.state.officers];
+                app.state.pagination.company.currentPage = 1;
+                app.state.pagination.officer.currentPage = 1;
+                
+                this.renderAllTables();
+                app.dom.infoText.textContent = 'Select a node or edge to view details.';
+                this.highlightTableRow(null, null, null);
+            },
+            highlightTableRow(companyId, officerId, role) {
+                document.querySelectorAll('#company-tbody tr, #officer-tbody tr, #roles-tbody tr').forEach(row => row.classList.remove('selected'));
+                if (companyId) {
+                    const companyRow = document.querySelector(`#company-tbody tr[data-company-id="${companyId}"]`);
+                    if (companyRow) companyRow.classList.add('selected');
+                }
+                if (officerId) {
+                    const officerRow = document.querySelector(`#officer-tbody tr[data-officer-id="${officerId}"]`);
+                    if (officerRow) officerRow.classList.add('selected');
+                }
+                if (role) {
+                    const roleRow = document.querySelector(`#roles-tbody tr[data-role="${role}"]`);
+                    if (roleRow) roleRow.classList.add('selected');
+                }
+            },
+            expandPanelsOnSelection() {
+                if (app.dom.rightPanel.classList.contains('hidden')) {
+                    this.togglePanel('right');
+                }
+                if (app.dom.bottomPanel.classList.contains('hidden')) {
+                    this.togglePanel('bottom');
+                }
+            },
+            highlightNode(nodeId, group) {
+                if (!app.state.network) return;
+                const originalSize = (group === 'company') ? 18 : 16;
+                app.state.network.body.data.nodes.update({ 
+                    id: nodeId, 
+                    size: originalSize + 5, 
+                    borderWidth: 4,
+                    shadow: true 
+                });
+            },
+            unhighlightNode(nodeId, group) {
+                if (!app.state.network) return;
+                const originalSize = (group === 'company') ? 18 : 16;
+                app.state.network.body.data.nodes.update({ 
+                    id: nodeId, 
+                    size: originalSize, 
+                    borderWidth: 2,
+                    shadow: false 
+                });
+            },
+            initContextMenu() {
+                app.dom.menuHighlightRecursive.addEventListener('click', () => {
+                    if (app.state.contextMenuTarget) {
+                        app.graph.highlightRecursive(app.state.contextMenuTarget);
+                    }
+                    this.hideContextMenu();
+                });
+                app.dom.menuHideHighlighted.addEventListener('click', () => {
+                    app.graph.hideHighlighted();
+                    this.hideContextMenu();
+                });
+                app.dom.menuHideUnhighlighted.addEventListener('click', () => {
+                    app.graph.hideUnhighlighted();
+                    this.hideContextMenu();
+                });
+                app.dom.menuClearHighlight.addEventListener('click', () => {
+                    app.graph.clearRecursiveHighlight();
+                    this.hideContextMenu();
+                });
+            },
+            showContextMenu(x, y, nodeId) {
+                app.state.contextMenuTarget = nodeId;
+                app.dom.contextMenu.style.display = 'block';
+                app.dom.contextMenu.style.left = x + 'px';
+                app.dom.contextMenu.style.top = y + 'px';
+
+                // Toggle visibility of hide options based on whether we have reachable nodes
+                if (app.state.reachableNodes.size > 0) {
+                    app.dom.menuHideHighlighted.classList.remove('hidden');
+                    app.dom.menuHideUnhighlighted.classList.remove('hidden');
+                } else {
+                    app.dom.menuHideHighlighted.classList.add('hidden');
+                    app.dom.menuHideUnhighlighted.classList.add('hidden');
+                }
+            },
+            hideContextMenu() {
+                if (app.dom.contextMenu) {
+                    app.dom.contextMenu.style.display = 'none';
+                }
+            },
+            updateSearchSuggestions() {
+                const suggestions = new Set();
+                app.state.nodes.forEach(node => {
+                    if (node.properties && node.properties.name) suggestions.add(node.properties.name);
+                });
+                app.state.edges.forEach(edge => {
+                    if (edge.properties && edge.properties.role) suggestions.add(edge.properties.role);
+                });
+
+                if (app.dom.searchSuggestions) {
+                    app.dom.searchSuggestions.innerHTML = '';
+                    [...suggestions].sort().forEach(suggestion => {
+                        const option = document.createElement('option');
+                        option.value = suggestion;
+                        app.dom.searchSuggestions.appendChild(option);
+                    });
+                }
+            },
+            handleSearch(isEnter = false) {
+                const query = app.dom.searchBox.value.toLowerCase();
+                if (!query) {
+                    app.ui.resetSelection();
+                    return;
+                }
+                
+                const matchingNodes = app.state.nodes.filter(node =>
+                    (node.label && node.label.toLowerCase().includes(query))
+                );
+
+                if (matchingNodes.length > 0) {
+                    const nodeIds = matchingNodes.map(node => node.id);
+                    if (app.state.network) {
+                        app.state.network.selectNodes(nodeIds);
+                    }
+
+                    const exactMatch = matchingNodes.find(node => node.label.toLowerCase() === query);
+                    if (exactMatch) {
+                        if (exactMatch.group === 'company') {
+                            const company = app.state.companies.find(c => c.id === exactMatch.id);
+                            if (company) this.selectCompany(company);
+                        } else if (exactMatch.group === 'officer') {
+                            const officer = app.state.officers.find(o => o.id === exactMatch.id);
+                            if (officer) this.selectOfficer(officer);
+                        }
+                    } else if (isEnter) {
+                        const node = matchingNodes[0];
+                        if (node.group === 'company') {
+                            const company = app.state.companies.find(c => c.id === node.id);
+                            if (company) this.selectCompany(company);
+                        } else if (node.group === 'officer') {
+                            const officer = app.state.officers.find(o => o.id === node.id);
+                            if (officer) this.selectOfficer(officer);
+                        }
+                        app.graph.center();
+                    }
+                } else {
+                    if (app.state.network) {
+                        app.state.network.selectNodes([]);
+                    }
+                    if (isEnter) {
+                        app.dom.infoText.textContent = 'No matching nodes found.';
+                        this.resetSelection();
+                    }
+                }
+            },
+            handleSort(type, e) {
+                if (e.target.tagName !== 'TH') return;
+                const field = e.target.dataset.field;
+                if (!field) return;
+
+                const sortState = type === 'company' ? app.state.currentCompanySort : app.state.currentOfficerSort;
+                let direction = 'asc';
+                if (sortState.field === field && sortState.direction === 'asc') {
+                    direction = 'desc';
+                }
+                sortState.field = field;
+                sortState.direction = direction;
+
+                // Sort the filtered data
+                const filteredData = app.state.pagination[type].filteredData;
+                const sortedData = app.data.sortData([...filteredData], field, direction);
+                app.state.pagination[type].filteredData = sortedData;
+                app.state.pagination[type].currentPage = 1; // Reset to first page after sorting
+                
+                if (type === 'company') {
+                    this.renderCompanyTable();
+                } else {
+                    this.renderOfficerTable();
+                }
+                this.updateSortIndicators(type + '-table', field, direction);
+            },
+            updateSortIndicators(tableId, field, direction) {
+                const table = document.getElementById(tableId);
+                if (!table) return;
+                
+                table.querySelectorAll('th').forEach(header => {
+                    const indicator = header.querySelector('.sort-indicator');
+                    if (indicator) {
+                        indicator.textContent = header.dataset.field === field ? (direction === 'asc' ? '↑' : '↓') : '';
+                    }
+                });
+            }
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => app.init());
+</script>
+</body>
+</html>
+
