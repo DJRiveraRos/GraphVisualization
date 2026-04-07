@@ -512,6 +512,13 @@
 			color: #007bff;
 		}
 	</style>
+
+	<meta property="og:title" content="Interactive Graph Visualization">
+	<meta property="og:description" content="Click to explore the relationship network">
+	<meta property="og:image" content="https://djriveraros.github.io/GraphVisualization/preview.png">
+	<meta name="twitter:card" content="summary_large_image">
+
+
 </head>
 <body>
     <div id="app-container">
@@ -607,7 +614,7 @@
                                 <tr>
                                     <th data-field="no">No.<span class="sort-indicator"></span></th>
                                     <th data-field="name">Miembro Relacionado<span class="sort-indicator"></span></th>
-                                    //<th data-field="dni">CIP<span class="sort-indicator"></span></th>
+                                    <th data-field="dni">CIP<span class="sort-indicator"></span></th>
                                     <th data-field="genre">Género<span class="sort-indicator"></span></th>
                                     <th data-field="idoneidad">Idoneidad<span class="sort-indicator"></span></th>
                                     <th data-field="inicioIdoneidad">Inicio Idoneidad<span class="sort-indicator"></span></th>
@@ -976,6 +983,7 @@
 
                         officersArr.push({
                             id: officerData.id,
+                            companyId: companyData.id,
                             name: officerData.properties.name || 'Unknown Officer',
                             dni: officerData.properties.dni || '',
                             genre: officerData.properties.genre || '',
@@ -997,14 +1005,7 @@
                 };
             },
             getRelatedOfficers(companyId) {
-                const relatedEdges = app.state.edges.filter(edge => edge.from === companyId || edge.to === companyId);
-                const officerIds = relatedEdges.map(edge => edge.from === companyId ? edge.to : edge.from);
-                return app.state.officers.filter(officer => officerIds.includes(officer.id)).map(officer => ({
-                    ...officer,
-                    role: app.state.edges.find(e => (e.from === companyId && e.to === officer.id) || (e.to === companyId && e.from === officer.id))?.properties?.role || '',
-                    startDate: app.state.edges.find(e => (e.from === companyId && e.to === officer.id) || (e.to === companyId && e.from === officer.id))?.properties?.startDate || '',
-                    endDate: app.state.edges.find(e => (e.from === companyId && e.to === officer.id) || (e.to === companyId && e.from === officer.id))?.properties?.endDate || ''
-                }));
+                return app.state.officers.filter(officer => officer.companyId === companyId);
             },
             getRelatedCompanies(officerId) {
                 const relatedEdges = app.state.edges.filter(edge => edge.from === officerId || edge.to === officerId);
@@ -1040,6 +1041,15 @@
                     } else {
                         return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
                     }
+                });
+            },
+            deDuplicateOfficers(officers) {
+                const seen = new Set();
+                return officers.filter(officer => {
+                    const key = `${officer.id}|${officer.name}|${officer.dni}|${officer.role}|${officer.startDate}|${officer.endDate}|${officer.genre}|${officer.idoneidad}|${officer.inicioIdoneidad}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
                 });
             },
             toTitleCase(str) {
@@ -1090,7 +1100,7 @@
                 app.state.roleMap = graphData.roleMap;
 
                 app.state.pagination.company.filteredData = [...app.state.companies];
-                app.state.pagination.officer.filteredData = [...app.state.officers];
+                app.state.pagination.officer.filteredData = app.data.deDuplicateOfficers([...app.state.officers]);
 
                 app.graph.render(graphData);
                 app.ui.renderAllTables();
@@ -1616,7 +1626,7 @@
 
                 // Update pagination data
                 app.state.pagination.company.filteredData = filteredCompanies;
-                app.state.pagination.officer.filteredData = filteredOfficers;
+                app.state.pagination.officer.filteredData = app.data.deDuplicateOfficers(filteredOfficers);
                 app.state.pagination.company.currentPage = 1;
                 app.state.pagination.officer.currentPage = 1;
 
@@ -1651,7 +1661,7 @@
 
                 // Update pagination data
                 app.state.pagination.company.filteredData = [company];
-                app.state.pagination.officer.filteredData = sortedOfficers;
+                app.state.pagination.officer.filteredData = app.data.deDuplicateOfficers(sortedOfficers);
                 app.state.pagination.company.currentPage = 1;
                 app.state.pagination.officer.currentPage = 1;
 
@@ -1698,7 +1708,7 @@
 
                 // Update pagination data
                 app.state.pagination.company.filteredData = sortedCompanies;
-                app.state.pagination.officer.filteredData = relatedOfficers;
+                app.state.pagination.officer.filteredData = app.data.deDuplicateOfficers(relatedOfficers);
                 app.state.pagination.company.currentPage = 1;
                 app.state.pagination.officer.currentPage = 1;
 
@@ -1733,7 +1743,7 @@
                 
                 // Reset pagination data to full datasets
                 app.state.pagination.company.filteredData = [...app.state.companies];
-                app.state.pagination.officer.filteredData = [...app.state.officers];
+                app.state.pagination.officer.filteredData = app.data.deDuplicateOfficers([...app.state.officers]);
                 app.state.pagination.company.currentPage = 1;
                 app.state.pagination.officer.currentPage = 1;
                 
